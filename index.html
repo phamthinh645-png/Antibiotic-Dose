@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Antibiotic Dose V4</title>
+
+<style>
+
+body{
+font-family:Segoe UI;
+background:#eef2f7;
+margin:0;
+padding:20px;
+}
+
+.container{
+max-width:1100px;
+margin:auto;
+background:white;
+padding:25px;
+border-radius:12px;
+box-shadow:0 6px 20px rgba(0,0,0,0.08);
+}
+
+h1{
+text-align:center;
+color:#1f5fbf;
+}
+
+.grid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:12px;
+margin-bottom:15px;
+}
+
+input,select{
+padding:10px;
+border:1px solid #ccc;
+border-radius:6px;
+font-size:15px;
+width:100%;
+}
+
+#drugSuggestions{
+border:1px solid #ccc;
+max-height:200px;
+overflow:auto;
+background:white;
+}
+
+.suggestItem{
+padding:8px;
+cursor:pointer;
+}
+
+.suggestItem:hover{
+background:#e8f0ff;
+}
+
+.result{
+margin-top:20px;
+background:#f4f8ff;
+padding:15px;
+border-radius:8px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:10px;
+}
+
+th,td{
+border:1px solid #ddd;
+padding:8px;
+text-align:center;
+}
+
+th{
+background:#1f5fbf;
+color:white;
+}
+
+.highlight{
+background:#d4edda;
+font-weight:bold;
+}
+
+.note{
+margin-top:10px;
+padding:10px;
+background:#fff8e1;
+border-left:4px solid #ffb300;
+font-size:14px;
+}
+.footer-note{
+text-align:center;
+margin-top:25px;
+font-size:14px;
+color:#555;
+line-height:1.6;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>TRA LIỀU KHÁNG SINH THEO CrCl</h1>
+
+<div class="grid">
+
+<input id="age" placeholder="Tuổi">
+<input id="weight" placeholder="Cân nặng (kg)">
+<input id="creat" placeholder="Creatinin µmol/L">
+
+<select id="sex">
+<option value="male">Nam</option>
+<option value="female">Nữ</option>
+</select>
+
+</div>
+
+<input id="drugInput" placeholder="Search antibiotic">
+<div id="drugSuggestions"></div>
+
+<div id="result" class="result"></div>
+
+<div style="text-align:center;margin-top:20px;color:#555;font-size:14px">
+
+<div><b>BS.Phạm Hữu Thịnh - 0941257931</b></div>
+
+<div style="margin-top:8px">
+Công cụ hỗ trợ tham khảo lâm sàng. Không thay thế quyết định bác sĩ.
+</div>
+
+<div>
+Link tham khảo:
+<a href="https://emed.bvbnd.vn/wiki/duoc/khang-sinh/lieu" target="_blank">
+https://emed.bvbnd.vn/wiki/duoc/khang-sinh/lieu
+</a>
+</div>
+</div>
+
+<script>
+
+/* bỏ dấu */
+
+function removeVN(str){
+return str.normalize("NFD")
+.replace(/[\u0300-\u036f]/g,"")
+.replace(/đ/g,"d")
+.replace(/Đ/g,"D")
+.toLowerCase()
+}
+
+/* DATABASE */
+
+const drugs=[
+
+{
+name:"Albendazol",
+mgkg: null,
+table:[
+{min:50,max:999,label:">50",dose:">=60kg: 400mg q12h <br> <60kg: 15mg/kg/ngày chia q12h"},
+{min:10,max:50,label:"10-50",dose:"Không có dữ liệu"},
+{min:0,max:10,label:"<10",dose:"Không có dữ liệu"}
+]
+},
+
+{
+name:"Amikacin",
+mgkg:7.5,
+table:[
+{min:60,max:999,label:">60",dose:"7.5 mg/kg q8h"},
+{min:40,max:60,label:"40-60",dose:"7.5 mg/kg q12h"},
+{min:20,max:40,label:"20-40",dose:"7.5 mg/kg q24h"},
+{min:0,max:20,label:"<20",dose:"7.5 mg/kg q48-72h"}
+]
+},
+
+{
+name:"Amoxicillin",
+mgkg: null,
+table:[
+{min:30,max:999,label:">30",dose:"Thông thường: 500mg q8h <br> Nặng: 1000mg q8h"},
+{min:10,max:30,label:"10-30",dose:"Thông thường:  250-500mg q12h <br> Nặng: 1000mg q12h"},
+{min:0,max:10,label:"<10",dose:"Thông thường: 250-500mg q24h <br> Nặng: 500mg q12h hoặc 1000mg q24h "}
+]
+},
+
+{
+name:"Amoxicillin/Acid Clavuclanic",
+mgkg: null,
+note:"CrCl <30: Không sử dụng viên 875mg, tính liều theo Amoxicillin",
+table:[
+{min:30,max:999,label:">30",dose:"500/125mg q8h hoặc 875/125 q12h"},
+{min:10,max:30,label:"10-30",dose:"Thông thường: 250-500mg q12h"},
+{min:0,max:10,label:"<10",dose:"Thông thường: 250-500mg q24h"}
+]
+},
+
+{
+name:"Ampicillin",
+mgkg: null,
+note:null,
+table:[
+{min:50,max:999,label:">50",dose:"1-2g q4-6h"},
+{min:10,max:50,label:"10-50",dose:"1-2g q6-12h"},
+{min:0,max:10,label:"<10",dose:"1-2g q12-24h"}
+]
+},
+
+{
+name:"Ampicillin/Sulbactam",
+mgkg: null,
+note:"Tính theo số gram tổng của Ampicillin và Sulbactam" ,
+table:[
+{min:30,max:999,label:">=30",dose:"1.5-3g q6h <br> MAX 12g/ngày"},
+{min:15,max:29,label:"15-29",dose:"1.5-3g q12h"},
+{min:5,max:14,label:"5-14",dose:"1.5-3g 24h"}
+]
+},
+
+{
+name:"Cefadroxil",
+mgkg: null,
+note:null,
+table:[
+{min:50,max:999,label:">50",dose:"500mg q12h hoặc 1000mg q24h"},
+{min:25,max:50,label:"25-50",dose:"500mg q12h"},
+{min:10,max:25,label:"10-25",dose:"500mg q24h"},
+{min:0,max:10,label:"<10",dose:"500mg q36h"}
+]
+},
+
+{
+name:"Cefalexin",
+mgkg: null,
+note:null,
+table:[
+{min:50,max:999,label:">50",dose:"250-1000mg q6-q12h<br>MAX: 4g/ngày<br>Nhiễm trùng nặng: 1000mg q6h"},
+{min:30,max:50,label:"30-50",dose:"250-500mg q6h<br>500-1000mg q8h<br>Nhiễm trùng nặng: 1000mg q8h"},
+{min:15,max:30,label:"15-30",dose:"250-500mg q8h<br>500-1000mg q12h<br>Nhiễm trùng nặng: 1000mg q12h"},
+{min:0,max:15,label:"<15",dose:"250-500mg q12-q24h<br>500-1000mg q24h<br>Nhiễm trùng nặng: 1000mg q24h"}
+]
+},
+
+{
+name:"Cefazolin",
+mgkg: null,
+note:null,
+table:[
+{min:35,max:999,label:">=35",dose:"Nhẹ/trung bình: 1g q8h<br>Nặng: 2g q8h"},
+{min:11,max:34,label:"11-34",dose:"Nhẹ/trung bình: 1g q12h<br>Nặng: 2g q12h"},
+{min:0,max:10,label:"<10",dose:"Nhẹ/trung bình:1g q24h<br>Nặng: 2g q24h"}
+]
+},
+
+{
+name:"Cefdinir",
+mgkg: null,
+note:null,
+table:[
+{min:30,max:999,label:">30",dose:"300mg q12h hoặc 600mg q24h"},
+{min:0,max:30,label:"<30",dose:"300mg q24h"}
+]
+},
+
+{
+name:"Cefepim",
+mgkg: null,
+note:null,
+table:[
+{min:60,max:999,label:">60",dose:"1g q8h hoặc 2g q12h<br> P.aeruginosa/Đa kháng 2g q8h"},
+{min:30,max:60,label:"30-60",dose:"1g q12h hoặc 2g q24h<br> P.aeruginosa/Đa kháng 2g q12h"},
+{min:10,max:30,label:"10-30",dose:"1g q24h<br> P.aeruginosa/Đa kháng 1g q12h hoặc 2g q24h"},
+{min:0,max:10,label:"<10",dose:"500mg q24h<br> P.aeruginosa/Đa kháng 1g q24h"}
+]
+},
+
+{
+name:"Cefixim",
+mgkg: null,
+note:null,
+table:[
+{min:60,max:999,label:">=60",dose:"200mg q12h hoặc 400mg q24h<br>Lậu: 400mg q12h (ít nhất 1 tuần)"},
+{min:21,max:59,label:"21-59",dose:"300mg q24h<br> Lậu: 75% liều bình thường"},
+{min:0,max:20,label:"<=20",dose:"200mg q24h<br> Lậu: 50% liều bình thường"}
+]
+},
+
+{
+name:"Cefoperazon",
+mgkg: null,
+note:null,
+table:[
+{min:18,max:999,label:">=18",dose:"MAX 12g/ngày chia q6-12h với nhiễm khuẩn nặng"},
+{min:0,max:18,label:"<18",dose:"MAX 4g/ngày"}
+]
+},
+
+{
+name:"Cefoperazon/sulbactam",
+mgkg: null,
+note:"Tính theo tổng liều 2 hoạt chất",
+table:[
+{min:30,max:999,label:">30",dose:"2-4g q12h<br>Cefoperazon MAX 12g/ngày<br>Sulbactam MAX 9g/ngày"},
+{min:15,max:30,label:"15-30",dose:"Cefoperazon 100% liều<br>Sulbactam 1g q12h (MAX 2g/ngày)"},
+{min:0,max:15,label:"<15",dose:"Cefoperazon 100% liều<br>Sulbactam 500mg q12h (MAX 1g/ngày)"}
+]
+},
+
+{
+name:"Cefotaxim",
+mgkg: null,
+note:null,
+table:[
+{min:50,max:999,label:">50",dose:"1-2g q6-8h<br>Nhiễm trùng nặng đe dọa tính mạng: 2g q4h MAX 12g/ngày"},
+{min:10,max:50,label:"10-50",dose:"1-2g q8-12h<br>Nhiễm trùng nặng đe dọa tính mạng: 2g q6-8h"},
+{min:0,max:10,label:"<10",dose:"1-2g q12-24h<br>Nhiễm trùng nặng đe dọa tính mạng: 2g q12h"}
+]
+},
+
+{
+name:"Cefpodoxim",
+mgkg: null,
+note:null,
+table:[
+{min:30,max:999,label:">30",dose:"100mg q12h"},
+{min:0,max:30,label:"<30",dose:"100mg q24h"}
+]
+},
+
+{
+name:"Cefprozil",
+mgkg: null,
+note:null,
+table:[
+{min:30,max:999,label:">=30",dose:"250-500mg q12h hoặc 500mg q24h"},
+{min:0,max:30,label:"<30",dose:"50% liều"}
+]
+},
+
+{
+name:"Ceftazidim",
+mgkg: null,
+note:null,
+table:[
+{min:50,max:999,label:">50",dose:"1-2g q8h"},
+{min:30,max:50,label:"30-50",dose:"1-2g q12h"},
+{min:15,max:30,label:"15-30",dose:"1-2g q24h"},
+{min:0,max:15,label:"<15",dose:"0.5-1g q24h"}
+]
+},
+
+{
+name:"Ceftriaxon",
+mgkg: null,
+note:null,
+table:[
+{min:10,max:999,label:">10",dose:"1-2g q24h<br>Nhiễm trùng huyết: 2g q24h MAX 4g/ngày"},
+{min:0,max:10,label:"<10",dose:"Không đổi MAX 2g/ngày"}
+]
+},
+
+{
+name:"Cefuroxim",
+mgkg: null,
+note:null,
+table:[
+{min:30,max:999,label:">30",dose:"PO 250-500mg q12h<br>IV 0.75-1.5g q8h<br>Nhiễm trùng nặng: 1.5g q6h"},
+{min:10,max:30,label:"10-30",dose:"PO 250mg 12h<br>IV 0.75-1.5g q12h"},
+{min:0,max:10,label:"<10",dose:"PO 250mg q24h<br>IV 0.75-1.5g q24h"}
+]
+},
+
+{
+name:"Ciprofloxacin",
+mgkg: null,
+note:null,
+table:[
+{min:50,max:999,label:">50",dose:"Nhiễm trùng thường: PO 500mg q12h hoặc IV 400mg q12h<br>Nhiễm trùng nặng, Pseudomonas: PO 750mg q12h hoặc IV 400mg q8h"},
+{min:30,max:50,label:"30-50",dose:"Nhiễm trùng thường: PO 500mg q12h hoặc IV 400mg q12h<br>Nhiễm trùng nặng, Pseudomonas: PO 500mg q12h hoặc IV 400mg q8-12h"},
+{min:0,max:30,label:"<30",dose:"Nhiễm trùng thường: PO 500mg q24h hoặc IV 400mg q24h<br>Nhiễm trùng nặng, Pseudomonas: PO 500mg q24h hoặc IV 400mg q24h"}
+]
+},
+
+{
+name:"Ertapenem",
+mgkg: null,
+note:null,
+table:[
+{min:30,max:999,label:">30",dose:"1g q24h"},
+{min:0,max:30,label:"<=30",dose:"500mg q24h"}
+]
+},
+
+{
+name:"Fosfomycin",
+mgkg: null,
+note:null,
+table:[
+{min:40,max:999,label:">=40",dose:"12-16g/ngày chia q6-12h MAX 8g/liều"},
+{min:30,max:40,label:"30-40",dose:"75% liều chia q8-12h"},
+{min:20,max:30,label:"20-30",dose:"60% liều chia q8-12h"},
+{min:10,max:20,label:"10-20",dose:"40% liều chia q8-12h"},
+{min:0,max:10,label:"<10",dose:"20% liều chia q12-24h"}
+]
+},
+
+{
+name:"Gentamicin",
+mgkg: null,
+note:null,
+table:[
+{min:60,max:999,label:">=60",dose:"1.7-2.3mg/kg q8h"},
+{min:40,max:60,label:"40-60",dose:"1.7-2.3mg/kg q12h"},
+{min:20,max:40,label:"20-40",dose:"1.7-2.3mg/kg q24h"},
+{min:0,max:20,label:"<20",dose:"Tính liều nạp 2-3mg/kg, sau đó TDM"}
+]
+},
+
+{
+name:"Imipenem/Cilastatin",
+mgkg: null,
+note:null,
+table:[
+{min:60,max:999,label:">=60",dose:"NT thông thường, Nặng-do VK nhạy cảm: 500mg q6h<br>Nặng và/hoặc đe dọa tính mạng-do Vk ít nhạy cảm hơn(1 số chủng P.aeruginosa: 1g q8h"},
+{min:30,max:59,label:"30-59",dose:"NT thông thường, Nặng-do VK nhạy cảm: 250mg q6h hoặc 500mg q8h<br>Nặng và/hoặc đe dọa tính mạng-do Vk ít nhạy cảm hơn(1 số chủng P.aeruginosa: 500mg q8h"},
+{min:15,max:29,label:"15-29",dose:"NT thông thường, Nặng-do VK nhạy cảm: 250mg q8h hoặc 500mg q12h<br>Nặng và/hoặc đe dọa tính mạng-do Vk ít nhạy cảm hơn(1 số chủng P.aeruginosa: 250mg q8h hoặc 500mg q12h"},
+{min:0,max:15,label:"<15",dose:"Không khuyến cáo trừ khi lọc máu trong vòng 48h"}
+]
+},
+
+{
+name:"Meropenem",
+mgkg: null,
+note:null,
+table:[
+{min:50,max:999,label:">50",dose:"Thông thường: 1g q8h hoặc 500mg q6h<br>Nặng: 2g q8h"},
+{min:26,max:50,label:"26-50",dose:"Thông thường: 1g q12h hoặc 500mg q8h<br>Nặng: 2g q12h"},
+{min:10,max:25,label:"10-25",dose:"Thông thường: 500mg q12h<br>Nặng: 1g q12h"},
+{min:0,max:10,label:"<10",dose:"Thông thường: 500mg q24h<br>Nặng: 1g q24h"}
+]
+},
+
+{
+name:"Piperacillin/Tazobactam",
+mgkg: null,
+note:null,
+table:[
+{min:40,max:999,label:">40",dose:"Thông thường: 3.375g q6h<br>Nặng/Pseadomonas: 4.5g q6h"},
+{min:20,max:40,label:"20-40",dose:"Thông thường: 2.25g q6h<br>Nặng/Pseadomonas: 4.5g q8h hoặc 3.375 q6h"},
+{min:0,max:20,label:"<20",dose:"Thông thường: 2.25g q8h<br>Nặng/Pseadomonas: 4.5g q12h hoặc 2.25 q6h"}
+]
+},
+
+{
+name:"Vancomycin",
+mgkg: null,
+note:null,
+table:[
+{min:90,max:999,label:">90",dose:"15-20mg/kg q8-12h"},
+{min:50,max:90,label:"50-90",dose:"15-20mg/kg q12h"},
+{min:15,max:49,label:"15-49",dose:"10-15mg/kg q24h"},
+{min:0,max:15,label:"<15",dose:"10-15mg/kg q48-72h"}
+]
+},
+
+]
+
+/* SEARCH */
+
+const input=document.getElementById("drugInput")
+
+input.addEventListener("input",function(){
+
+let value=removeVN(this.value)
+
+let results=drugs.filter(d=>removeVN(d.name).includes(value))
+
+show(results)
+
+})
+
+/* ENTER CHỌN THUỐC */
+
+input.addEventListener("keydown",function(e){
+
+if(e.key==="Enter"){
+
+let first=document.querySelector(".suggestItem")
+
+if(first) first.click()
+
+}
+
+})
+
+function show(list){
+
+let box=document.getElementById("drugSuggestions")
+
+box.innerHTML=""
+
+list.forEach(d=>{
+
+let div=document.createElement("div")
+
+div.className="suggestItem"
+div.innerText=d.name
+
+div.onclick=function(){
+
+input.value=d.name
+box.innerHTML=""
+
+calculate()
+
+}
+
+box.appendChild(div)
+
+})
+
+}
+
+/* TÍNH CrCl */
+
+function calcCrCl(){
+
+let age=parseFloat(document.getElementById("age").value)
+let weight=parseFloat(document.getElementById("weight").value)
+let creat=parseFloat(document.getElementById("creat").value)
+let sex=document.getElementById("sex").value
+
+if(!age || !weight || !creat) return null
+
+let scr=creat/88.4
+
+let crcl=((140-age)*weight)/(72*scr)
+
+if(sex==="female") crcl*=0.85
+
+return crcl
+
+}
+
+/* CALCULATE */
+
+function calculate(){
+
+let crcl=calcCrCl()
+
+let drug=drugs.find(d=>d.name===input.value)
+
+if(!drug) return
+
+let html=""
+
+if(crcl){
+html+="<h3>CrCl: "+crcl.toFixed(1)+" mL/min</h3>"
+}else{
+html+="<h3>Tra cứu liều (chưa nhập thông tin)</h3>"
+}
+
+html+="<b>"+drug.name+"</b>"
+
+html+="<table>"
+html+="<tr><th>CrCl</th><th>Liều</th></tr>"
+
+drug.table.forEach(r=>{
+
+let highlight=(crcl && crcl>=r.min && crcl<r.max)?"class='highlight'":""
+
+html+="<tr "+highlight+">"
+html+="<td>"+r.label+"</td>"
+html+="<td>"+r.dose+"</td>"
+html+="</tr>"
+
+})
+
+html+="</table>"
+
+if(drug.note){
+html+="<div class='note'><b>Ghi chú:</b> "+drug.note+"</div>"
+}
+
+document.getElementById("result").innerHTML=html
+
+}
+
+/* TỰ CẬP NHẬT */
+
+["age","weight","creat","sex"].forEach(id=>{
+document.getElementById(id).addEventListener("input",calculate)
+})
+
+</script>
+
+</body>
+</html>
