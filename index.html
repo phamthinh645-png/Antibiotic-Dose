@@ -417,7 +417,7 @@ table:[
 
 {
 name:"Gentamicin",
-mgkg: null,
+mgkg: [1.7,2.3],
 note:null,
 table:[
 {min:60,max:999,label:">=60",dose:"1.7-2.3mg/kg q8h"},
@@ -464,7 +464,7 @@ table:[
 
 {
 name:"Vancomycin",
-mgkg: null,
+mgkg: [15,20],
 note:null,
 table:[
 {min:90,max:999,label:">90",dose:"15-20mg/kg q8-12h"},
@@ -557,43 +557,79 @@ return crcl
 
 function calculate(){
 
-let crcl=calcCrCl()
+let crcl = calcCrCl()
 
-let drug=drugs.find(d=>d.name===input.value)
+let drug = drugs.find(d => d.name === input.value)
 
 if(!drug) return
 
-let html=""
+let weight = parseFloat(document.getElementById("weight").value)
+
+let html = ""
 
 if(crcl){
-html+="<h3>CrCl: "+crcl.toFixed(1)+" mL/min</h3>"
+html += "<h3>CrCl: " + crcl.toFixed(1) + " mL/min</h3>"
 }else{
-html+="<h3>Tra cứu liều (chưa nhập thông tin)</h3>"
+html += "<h3>Tra cứu liều (chưa nhập thông tin)</h3>"
 }
 
-html+="<b>"+drug.name+"</b>"
+html += "<b>" + drug.name + "</b>"
 
-html+="<table>"
-html+="<tr><th>CrCl</th><th>Liều</th></tr>"
+html += "<table>"
+html += "<tr><th>CrCl</th><th>Liều</th></tr>"
 
 drug.table.forEach(r=>{
 
-let highlight=(crcl && crcl>=r.min && crcl<r.max)?"class='highlight'":""
+let highlight = (crcl && crcl >= r.min && crcl < r.max) ? "class='highlight'" : ""
 
-html+="<tr "+highlight+">"
-html+="<td>"+r.label+"</td>"
-html+="<td>"+r.dose+"</td>"
-html+="</tr>"
+html += "<tr " + highlight + ">"
+html += "<td>" + r.label + "</td>"
+html += "<td>" + r.dose + "</td>"
+html += "</tr>"
 
 })
 
-html+="</table>"
+html += "</table>"
 
-if(drug.note){
-html+="<div class='note'><b>Ghi chú:</b> "+drug.note+"</div>"
+
+/* HIỂN THỊ LIỀU THEO CÂN NẶNG */
+
+if(drug.mgkg && weight){
+
+html += "<div style='margin-top:10px;padding:10px;background:#fff3cd;border-radius:6px'>"
+html += "<b>Liều theo cân nặng:</b><br>"
+
+if(Array.isArray(drug.mgkg)){
+
+let min = drug.mgkg[0] * weight
+let max = drug.mgkg[1] * weight
+
+html += drug.mgkg[0] + "–" + drug.mgkg[1] + " mg/kg × " + weight + " kg = "
+html += "<span style='color:#d63384;font-weight:bold'>"
+html += min.toFixed(0) + " – " + max.toFixed(0) + " mg"
+html += "</span>"
+
+}else{
+
+let mg = drug.mgkg * weight
+
+html += drug.mgkg + " mg/kg × " + weight + " kg = "
+html += "<span style='color:#d63384;font-weight:bold'>"
+html += mg.toFixed(0) + " mg"
+html += "</span>"
+
 }
 
-document.getElementById("result").innerHTML=html
+html += "</div>"
+
+}
+
+
+if(drug.note){
+html += "<div class='note'><b>Ghi chú:</b> " + drug.note + "</div>"
+}
+
+document.getElementById("result").innerHTML = html
 
 }
 
@@ -608,3 +644,4 @@ document.getElementById(id).addEventListener("input",calculate)
 </body>
 
 </html>
+
