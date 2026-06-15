@@ -140,12 +140,7 @@ line-height:1.6;
 Công cụ hỗ trợ tham khảo lâm sàng. Không thay thế quyết định bác sĩ.
 </div>
 
-<div>
-Link tham khảo:
-<a href="https://emed.bvbnd.vn/wiki/duoc/khang-sinh/lieu" target="_blank">
-https://emed.bvbnd.vn/wiki/duoc/khang-sinh/lieu
-</a>
-</div>
+
 </div>
 
 <script>
@@ -163,7 +158,7 @@ return str.normalize("NFD")
 /* DATABASE */
 
 const drugs=[
-
+  
 {
 name:"Albendazol",
 mgkg: null,
@@ -222,7 +217,7 @@ name:"Ampicillin/Sulbactam",
 mgkg: null,
 note:"Tính theo số gram tổng của Ampicillin và Sulbactam" ,
 table:[
-{min:30,max:999,label:">=30",dose:"1.5-3g q6h <br> MAX 12g/ngày"},
+{min:30,max:999,label:">=30",dose:"1.5-3g q6h - q8h <br> MAX 12g/ngày"},
 {min:15,max:29,label:"15-29",dose:"1.5-3g q12h"},
 {min:5,max:14,label:"5-14",dose:"1.5-3g 24h"}
 ]
@@ -234,9 +229,9 @@ mgkg: null,
 note:null,
 table:[
 {min:50,max:999,label:">50",dose:"500mg q12h hoặc 1000mg q24h"},
-{min:25,max:50,label:"25-50",dose:"500mg q12h"},
-{min:10,max:25,label:"10-25",dose:"500mg q24h"},
-{min:0,max:10,label:"<10",dose:"500mg q36h"}
+{min:25,max:50,label:"26-50",dose:"Liều khởi đầu 1g, duy trì 500mg q12h"},
+{min:10,max:25,label:"11-25",dose:"Liều khởi đầu 1g, duy trì 500mg q24h"},
+{min:0,max:10,label:"<=10",dose:"Liều khởi đầu 1g, duy trì 500mg q36h"}
 ]
 },
 
@@ -255,11 +250,11 @@ table:[
 {
 name:"Cefazolin",
 mgkg: null,
-note:null,
+note:"Nhiễm khuẩn nhẹ 250-500mg cách 8h, Nhiễm khuẩn trung bình - nặng 0.5-1g cách 6-8h, Nhiễm khuẩn nặng đe dạo tính mạng 1-1.5g cách 6h" ,
 table:[
-{min:35,max:999,label:">=35",dose:"Nhẹ/trung bình: 1g q8h<br>Nặng: 2g q8h"},
-{min:11,max:34,label:"11-34",dose:"Nhẹ/trung bình: 1g q12h<br>Nặng: 2g q12h"},
-{min:0,max:10,label:"<10",dose:"Nhẹ/trung bình:1g q24h<br>Nặng: 2g q24h"}
+{min:35,max:999,label:">=35",dose:"Liều thông thường, >=q8h"},
+{min:11,max:34,label:"11-34",dose:"50% liều thông thường, q12h"},
+{min:0,max:10,label:"<10",dose:"50% liều thông thường, q18-24h"}
 ]
 },
 
@@ -278,13 +273,24 @@ name:"Cefepim",
 mgkg: null,
 note:null,
 table:[
-{min:60,max:999,label:">60",dose:"1g q8h hoặc 2g q12h<br> P.aeruginosa/Đa kháng 2g q8h"},
+{min:60,max:999,label:">60",dose:"1-2g q8h-q12h <br> P.aeruginosa/Đa kháng 2g q8h"},
 {min:30,max:60,label:"30-60",dose:"1g q12h hoặc 2g q24h<br> P.aeruginosa/Đa kháng 2g q12h"},
-{min:10,max:30,label:"10-30",dose:"1g q24h<br> P.aeruginosa/Đa kháng 1g q12h hoặc 2g q24h"},
-{min:0,max:10,label:"<10",dose:"500mg q24h<br> P.aeruginosa/Đa kháng 1g q24h"}
+{min:11,max:30,label:"11-29",dose:"1g q24h<br> P.aeruginosa/Đa kháng 1g q12h hoặc 2g q24h"},
+{min:0,max:10,label:"<11",dose:"500mg q24h<br> P.aeruginosa/Đa kháng 1g q24h"}
 ]
 },
 
+{
+name:"Cefotaxim",
+mgkg: null,
+note:"Nhiễm khuẩn nhẹ 1g q12h, Nhiễm khuẩn trung bình 1-2g q8h, Nhiễm khuẩn nặng 2-3g q6-8h",
+table:[
+{min:20,max:999,label:">20",dose:"Liều thông thường"},
+{min:5,max:20,label:"<20",dose:"Giảm nữa liều"}
+{min:0,max:5,label:"<=5",dose:"Giảm liều còn 1g ngày, chia 2 lần"}
+]
+},
+  
 {
 name:"Cefixim",
 mgkg: null,
@@ -317,16 +323,6 @@ table:[
 ]
 },
 
-{
-name:"Cefotaxim",
-mgkg: null,
-note:null,
-table:[
-{min:50,max:999,label:">50",dose:"1-2g q6-8h<br>Nhiễm trùng nặng đe dọa tính mạng: 2g q4h MAX 12g/ngày"},
-{min:10,max:50,label:"10-50",dose:"1-2g q8-12h<br>Nhiễm trùng nặng đe dọa tính mạng: 2g q6-8h"},
-{min:0,max:10,label:"<10",dose:"1-2g q12-24h<br>Nhiễm trùng nặng đe dọa tính mạng: 2g q12h"}
-]
-},
 
 {
 name:"Cefpodoxim",
