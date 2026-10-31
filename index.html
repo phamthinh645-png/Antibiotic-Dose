@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Antibiotic Dose</title>
+<title>Antibiotic Dose 2</title>
 
 <style>
 
@@ -116,9 +116,9 @@ line-height:1.6;
 
 <div class="grid">
 
-<input id="age" placeholder="Tuổi">
-<input id="weight" placeholder="Cân nặng (kg)">
-<input id="creat" placeholder="Creatinin µmol/L">
+<input id="age" type="number" min="1" max="120" step="1" placeholder="Tuổi">
+<input id="weight" type="number" min="0.1" step="any" placeholder="Cân nặng (kg)">
+<input id="creat" type="number" min="0.1" step="any" placeholder="Creatinin µmol/L">
 
 <select id="sex">
 <option value="male">Nam</option>
@@ -142,7 +142,6 @@ Công cụ hỗ trợ tham khảo lâm sàng. Không thay thế quyết định 
 
 
 </div>
-</body>
 <script>
 
 /* bỏ dấu */
@@ -171,11 +170,12 @@ table:[
 
 {
 name:"Amikacin",
-mgkg:7.5,
+mgkg:{ conventional:7.5, oda:[15,20] },
 table:[
-{min:60,max:999,label:">60",dose:"7.5 mg/kg q8h"},
-{min:40,max:60,label:"40-60",dose:"7.5 mg/kg q12h"},
-{min:20,max:40,label:"20-40",dose:"7.5 mg/kg q24h"},
+{min:60,max:999,label:">60",dose:"7.5 mg/kg q8h <br> Liều ODA: 15-20mg/kg q24h"},
+{min:40,max:60,label:"40-60",dose:"7.5 mg/kg q12h <br> Liều ODA: 15-20mg/kg q36h"},
+{min:30,max:40,label:"30-40",dose:"7.5 mg/kg q24h <br> Liều ODA: 15 mg/kg q48h"},
+{min:20,max:30,label:"20-30",dose:"7.5 mg/kg q24h <br> Liều ODA: CrCl < 30mL/p không khuyến cáo sử dụng"},
 {min:0,max:20,label:"<20",dose:"7.5 mg/kg q48-72h"}
 ]
 },
@@ -195,9 +195,9 @@ name:"Amoxicillin/Acid Clavuclanic",
 mgkg: null,
 note:"CrCl <30: Không sử dụng viên 875mg, tính liều theo Amoxicillin",
 table:[
-{min:30,max:999,label:">30",dose:"500/125mg q8h hoặc 875/125 q12h"},
-{min:10,max:30,label:"10-30",dose:"Thông thường: 250-500mg q12h"},
-{min:0,max:10,label:"<10",dose:"Thông thường: 250-500mg q24h"}
+{min:30,max:999,label:">30",dose:"Đường uống: 500/125mg q8h hoặc 875/125 q12h <br> Đường tiêm:1000mg/200mg q8h"},
+{min:10,max:30,label:"10-30",dose:"Đường uống: 250-500mg q12h <br> Đường tiêm: Liều ban đầu 1000mg/200mg sau đó 500mg/100mg q12h"},
+{min:0,max:10,label:"<10",dose:"Đường uống: 250-500mg q24h <br> Đường tiêm: Liều ban đầu 1000mg/200mg sau đó 500mg/100mg q24h"}
 ]
 },
 
@@ -531,113 +531,127 @@ box.appendChild(div)
 /* TÍNH CrCl */
 
 function calcCrCl(){
+  const age = Number(document.getElementById("age").value);
+  const weight = Number(document.getElementById("weight").value);
+  const creat = Number(document.getElementById("creat").value);
+  const sex = document.getElementById("sex").value;
 
-let age=parseFloat(document.getElementById("age").value)
-let weight=parseFloat(document.getElementById("weight").value)
-let creat=parseFloat(document.getElementById("creat").value)
-let sex=document.getElementById("sex").value
+  // Chỉ tính khi đủ cả 3 thông số và đều hợp lệ.
+  if(!Number.isFinite(age) || !Number.isFinite(weight) ||
+     !Number.isFinite(creat) || age <= 0 || age > 120 ||
+     weight <= 0 || creat <= 0){
+    return null;
+  }
 
-if(!age || !weight || !creat) return null
+  const scr = creat / 88.4; // µmol/L -> mg/dL
+  if(!Number.isFinite(scr) || scr <= 0) return null;
 
-let scr=creat/88.4
+  let crcl = ((140 - age) * weight) / (72 * scr);
+  if(sex === "female") crcl *= 0.85;
 
-let crcl=((140-age)*weight)/(72*scr)
-
-if(sex==="female") crcl*=0.85
-
-return crcl
-
+  if(!Number.isFinite(crcl) || crcl < 0) return null;
+  return crcl;
 }
 
 /* CALCULATE */
 
 function calculate(){
+  const crcl = calcCrCl();
+  const ageRaw = document.getElementById("age").value.trim();
+  const weightRaw = document.getElementById("weight").value.trim();
+  const creatRaw = document.getElementById("creat").value.trim();
+  const age = Number(ageRaw);
+  const weight = Number(weightRaw);
+  const creat = Number(creatRaw);
+  const hasAnyPatientInput = [ageRaw, weightRaw, creatRaw].some(v => v !== "");
+  const invalidPatientInput = hasAnyPatientInput && (
+    (ageRaw !== "" && (!Number.isFinite(age) || age <= 0 || age > 120)) ||
+    (weightRaw !== "" && (!Number.isFinite(weight) || weight <= 0)) ||
+    (creatRaw !== "" && (!Number.isFinite(creat) || creat <= 0))
+  );
 
-let crcl = calcCrCl()
+  const drug = drugs.find(d => d.name === input.value);
+  if(!drug) return;
 
-let drug = drugs.find(d => d.name === input.value)
+  let html = "";
+  if(crcl !== null){
+    html += "<h3>CrCl: " + crcl.toFixed(1) + " mL/min</h3>";
+  }else{
+    html += "<h3>Tra cứu liều (chưa nhập đủ thông tin)</h3>";
+  }
 
-if(!drug) return
+  if(invalidPatientInput){
+    html += "<div class='note'><b>Kiểm tra dữ liệu:</b> Tuổi phải từ 1–120; cân nặng và creatinin phải là số lớn hơn 0. Cần nhập đủ cả 3 thông số để tính CrCl.</div>";
+  }
 
-let weight = parseFloat(document.getElementById("weight").value)
+  html += "<b>" + drug.name + "</b>";
+  html += "<table>";
+  html += "<tr><th>CrCl</th><th>Liều</th></tr>";
 
-let html = ""
+  let matchedRange = false;
+  drug.table.forEach(r => {
+    const isMatch = crcl !== null && crcl >= r.min &&
+      (r.max === 999 ? true : crcl < r.max);
+    if(isMatch) matchedRange = true;
 
-if(crcl){
-html += "<h3>CrCl: " + crcl.toFixed(1) + " mL/min</h3>"
-}else{
-html += "<h3>Tra cứu liều (chưa nhập thông tin)</h3>"
-}
+    html += "<tr " + (isMatch ? "class='highlight'" : "") + ">";
+    html += "<td>" + r.label + "</td>";
+    html += "<td>" + r.dose + "</td>";
+    html += "</tr>";
+  });
 
-html += "<b>" + drug.name + "</b>"
+  html += "</table>";
 
-html += "<table>"
-html += "<tr><th>CrCl</th><th>Liều</th></tr>"
+  if(crcl !== null && !matchedRange){
+    html += "<div class='note'><b>Lưu ý:</b> Không tìm thấy khoảng CrCl tương ứng trong dữ liệu của thuốc này. Cần kiểm tra lại bảng liều nguồn.</div>";
+  }
 
-drug.table.forEach(r=>{
+  // Hiển thị phép tính liều theo cân nặng; không tự chọn hoặc thay thế phác đồ.
+  if(drug.mgkg && Number.isFinite(weight) && weight > 0){
+    html += "<div style='margin-top:10px;padding:10px;background:#fff3cd;border-radius:6px'>";
+    html += "<b>Tham khảo phép tính liều theo cân nặng (" + weight + " kg):</b><br>";
 
-let highlight = (crcl && crcl >= r.min && crcl < r.max) ? "class='highlight'" : ""
+    if(drug.mgkg && !Array.isArray(drug.mgkg) && typeof drug.mgkg === "object"){
+      const conventional = drug.mgkg.conventional;
+      const oda = drug.mgkg.oda;
+      if(Number.isFinite(conventional)){
+        html += "Phác đồ thông thường: " + conventional + " mg/kg × " + weight +
+          " kg = <b>" + (conventional * weight).toFixed(0) + " mg</b><br>";
+      }
+      if(Array.isArray(oda) && oda.length === 2){
+        html += "Phác đồ ODA: " + oda[0] + "–" + oda[1] + " mg/kg × " + weight +
+          " kg = <b>" + (oda[0] * weight).toFixed(0) + "–" +
+          (oda[1] * weight).toFixed(0) + " mg</b>";
+      }
+    }else if(Array.isArray(drug.mgkg)){
+      const min = drug.mgkg[0] * weight;
+      const max = drug.mgkg[1] * weight;
+      html += drug.mgkg[0] + "–" + drug.mgkg[1] + " mg/kg × " + weight +
+        " kg = <b>" + min.toFixed(0) + "–" + max.toFixed(0) + " mg</b>";
+    }else if(Number.isFinite(drug.mgkg)){
+      const mg = drug.mgkg * weight;
+      html += drug.mgkg + " mg/kg × " + weight + " kg = <b>" + mg.toFixed(0) + " mg</b>";
+    }
 
-html += "<tr " + highlight + ">"
-html += "<td>" + r.label + "</td>"
-html += "<td>" + r.dose + "</td>"
-html += "</tr>"
+    html += "</div>";
+  }
 
-})
+  if(drug.note){
+    html += "<div class='note'><b>Ghi chú:</b> " + drug.note + "</div>";
+  }
 
-html += "</table>"
-
-
-/* HIỂN THỊ LIỀU THEO CÂN NẶNG */
-
-if(drug.mgkg && weight){
-
-html += "<div style='margin-top:10px;padding:10px;background:#fff3cd;border-radius:6px'>"
-html += "<b>Liều theo cân nặng:</b><br>"
-
-if(Array.isArray(drug.mgkg)){
-
-let min = drug.mgkg[0] * weight
-let max = drug.mgkg[1] * weight
-
-html += drug.mgkg[0] + "–" + drug.mgkg[1] + " mg/kg × " + weight + " kg = "
-html += "<span style='color:#d63384;font-weight:bold'>"
-html += min.toFixed(0) + " – " + max.toFixed(0) + " mg"
-html += "</span>"
-
-}else{
-
-let mg = drug.mgkg * weight
-
-html += drug.mgkg + " mg/kg × " + weight + " kg = "
-html += "<span style='color:#d63384;font-weight:bold'>"
-html += mg.toFixed(0) + " mg"
-html += "</span>"
-
-}
-
-html += "</div>"
-
-}
-
-
-if(drug.note){
-html += "<div class='note'><b>Ghi chú:</b> " + drug.note + "</div>"
-}
-
-document.getElementById("result").innerHTML = html
-
+  document.getElementById("result").innerHTML = html;
 }
 
 /* TỰ CẬP NHẬT */
 
-["age","weight","creat","sex"].forEach(id=>{
-document.getElementById(id).addEventListener("input",calculate)
-})
+["age","weight","creat"].forEach(id=>{
+  document.getElementById(id).addEventListener("input", calculate);
+});
+document.getElementById("sex").addEventListener("change", calculate);
 
 </script>
 
 </body>
-
 </html>
 
